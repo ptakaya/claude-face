@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Claude Face — Phase 1: the particles talk</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #000; color: #ddd; font: 13px/1.45 -apple-system, "SF Pro Text", Helvetica, sans-serif; overflow: hidden; }
+  #stage { position: fixed; inset: 0; }
+  #panel {
+    position: fixed; top: 12px; right: 12px; width: 262px;
+    max-height: calc(100vh - 24px); overflow-y: auto;
+    background: rgba(14,14,16,.88); border: 1px solid #2a2a2e; border-radius: 10px;
+    padding: 14px 14px 10px; backdrop-filter: blur(8px); z-index: 10;
+  }
+  #panel h1 { font-size: 13px; margin: 0 0 2px; color: #fff; letter-spacing: .02em; }
+  #panel .sub { color: #888; font-size: 11px; margin-bottom: 10px; }
+  .grp { margin: 10px 0 0; }
+  .grp label.t { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #9a9aa2; margin-bottom: 4px; }
+  .seg { display: flex; gap: 4px; }
+  .seg button {
+    flex: 1; background: #1c1c20; color: #cfcfd4; border: 1px solid #303036;
+    border-radius: 6px; padding: 5px 0; font-size: 12px; cursor: pointer;
+  }
+  .seg button.on { background: #e8e8ee; color: #000; border-color: #e8e8ee; font-weight: 600; }
+  .grp input[type=range] { width: 100%; }
+  select, #speak, #loop, #stop {
+    width: 100%; background: #1c1c20; color: #ddd; border: 1px solid #303036;
+    border-radius: 6px; padding: 6px 8px; font-size: 12px; margin-top: 6px; cursor: pointer;
+  }
+  #speak { background: #dfe6ff; color: #000; font-weight: 600; border-color: #dfe6ff; }
+  .row { display: flex; gap: 6px; }
+  .row > * { flex: 1; }
+  #status { margin-top: 8px; color: #7fa8b8; font-size: 11px; min-height: 28px; }
+  #hud {
+    position: fixed; left: 12px; bottom: 10px; color: #555; font-size: 11px; z-index: 10;
+    user-select: none;
+  }
+  #stamp { position: fixed; left: 12px; top: 12px; color: #666; font-size: 11px; z-index: 10; white-space: pre; }
+  #boot { position: fixed; inset: 0; display: grid; place-items: center; color: #777; z-index: 20; background: #000; }
+  #faceOverlay {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    height: 80vh; opacity: 0; pointer-events: none; z-index: 5; display: none;
+  }
+
+  /* ---- M3 terminal chrome: thinking dots + rotating word + input, all docked in the drawer footer ---- */
+  /* Hidden by default; shown in app/bridge mode with the drawer. Default dev page is byte-for-byte unchanged. */
+  #thinking { display: none; align-items: center; gap: 8px; height: 14px; }
+  #thinking.show { display: flex; }
+  #thinking .dots { display: inline-flex; gap: 6px; align-items: center; }
+  #thinking .dots span {
+    width: 8px; height: 8px; border-radius: 50%; background: #cfd6ff;
+    opacity: .3; animation: sf-dot 1.4s infinite ease-in-out both;
+  }
+  #thinking .dots span:nth-child(2) { animation-delay: .2s; }
+  #thinking .dots span:nth-child(3) { animation-delay: .4s; }
+  #thinkword { font: italic 11px/1 ui-monospace, "SF Mono", Menlo, monospace; color: #9aa0ff; letter-spacing: .02em; }
+  @keyframes sf-dot {
+    0%, 80%, 100% { opacity: .25; transform: translateY(0) scale(.85); }
+    40% { opacity: .95; transform: translateY(-3px) scale(1); }
+  }
+  /* the input now lives in the drawer footer (normal flow), squared for the terminal look */
+  #talkInput {
+    width: 100%; background: rgba(14,14,16,.86); color: #eee;
+    border: 1px solid #34343c; border-radius: 6px; padding: 10px 12px;
+    font-size: 14px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  #talkInput::placeholder { color: #7a7a82; }
+  #talkInput:focus { border-color: #5b6cff; box-shadow: 0 0 0 2px rgba(40,60,255,.18); }
+  #talkInput.heard { border-color: #3ad29f; box-shadow: 0 0 0 2px rgba(58,210,159,.18); }
+  /* app mode: the pure standalone window — hide the dev chrome so her face + box are all you see */
+  body.app #panel, body.app #hud, body.app #stamp { display: none !important; }
+
+  /* ---- M3.2 transcript drawer (push): narrows #stage so the canvas refits the visible pane ---- */
+  /* Gated on in app/bridge via .show (added in main.js); the default dev page is unchanged. */
+  :root { --dw: 480px; }
+  #stage { transition: right .35s ease; }
+  body.drawer-open #stage { right: var(--dw); }
+  #drawer {
+    position: fixed; top: 0; right: 0; height: 100vh; width: var(--dw);
+    transform: translateX(100%); transition: transform .35s ease;
+    background: rgba(10,10,12,.92); border-left: 1px solid #26262c;
+    backdrop-filter: blur(12px); z-index: 16; display: none; flex-direction: column;
+  }
+  #drawer.show { display: flex; }
+  body.drawer-open #drawer { transform: none; }
+  #transcript {
+    flex: 1; overflow-y: auto; padding: 16px 14px;
+    display: flex; flex-direction: column;
+    font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  /* terminal lines. Differentiated 3 ways: YOUR line gets a readable grey block + caret; HER lines are
+     plain and brighter; spacing GROUPS each exchange (big gap above your line, tight between her sentences). */
+  .tline { white-space: pre-wrap; overflow-wrap: anywhere; margin: 1px 0; }
+  .tline.me  { background: rgba(150,158,176,.14); color: #cfd4de; padding: 5px 9px 5px 10px; border-radius: 6px; border-left: 2px solid #5b6cff; margin: 14px 0 14px; }
+  .tline.me::before { content: "› "; color: #8b93a8; }
+  .tline.her { color: #e6e9ef; padding: 2px 0; }
+  .tline.tool { color: #6f7686; font-style: italic; padding: 1px 0; }
+  /* docked footer: thinking row, input, status line */
+  #drawerfoot { border-top: 1px solid #26262c; padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+  #statusLine { font: 10px/1.4 ui-monospace, Menlo, monospace; color: #6c7480; min-height: 12px;
+    white-space: pre-wrap; overflow-wrap: anywhere; }
+  /* persistent REPL-style status (model · context% · burned); separate element so transient #statusLine never clobbers it */
+  #statusbar { font: 10px/1.4 ui-monospace, Menlo, monospace; color: #8b93a8; min-height: 12px; letter-spacing: .02em; }
+  /* ---- award-grade chrome: identity pill · voice meter · glassy control cluster (gated via .show) ---- */
+  #idpill, #meter, #controls { display: none; }
+  #idpill.show, #controls.show { display: flex; }
+  #meter.show { display: block; }
+
+  /* identity pill — top-left brand mark with a live-connection dot */
+  #idpill {
+    position: fixed; top: 16px; left: 16px; z-index: 18; align-items: center; gap: 8px;
+    padding: 6px 13px 6px 10px; border-radius: 999px;
+    background: rgba(18,18,22,.55); border: 1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    font: 600 11px/1 -apple-system, "SF Pro Text", sans-serif; letter-spacing: .16em;
+    text-transform: uppercase; color: #e7e8ee; box-shadow: 0 6px 22px rgba(0,0,0,.4);
+  }
+  #idpill .dot { width: 7px; height: 7px; border-radius: 50%; background: #565b67; transition: background .3s; }
+  #idpill #idname { color: #4da3ff; }   /* name in the same azure as the sliders */
+  #idpill.online .dot { background: #35d07f; animation: sf-pulse 2.4s infinite ease-in-out; }
+  @keyframes sf-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(53,208,127,.55); }
+    55% { box-shadow: 0 0 0 5px rgba(53,208,127,0); }
+  }
+
+  /* voice meter — a classic waveform line at the bottom of her pane; oscillates off her audio, shifts with drawer */
+  #meter {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    width: 320px; height: 42px; z-index: 14; opacity: .85; pointer-events: none;
+    transition: left .35s ease, opacity .45s ease;
+  }
+  #meter.live { opacity: 1; }
+  body.drawer-open #meter { left: calc(50% - var(--dw) / 2); }
+
+  /* glassy control cluster — rides the drawer's left edge; holds mute + the drawer toggle */
+  #controls { position: fixed; top: 14px; right: 14px; z-index: 18; gap: 8px; transition: right .35s ease; }
+  body.drawer-open #controls { right: calc(var(--dw) + 14px); }
+  #controls button {
+    width: 44px; height: 44px; border-radius: 50%; padding: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 20px; line-height: 1;
+    background: rgba(18,18,22,.55); border: 1px solid rgba(255,255,255,.09); color: #d6dae3;
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 6px 22px rgba(0,0,0,.4);
+    transition: background .15s, border-color .15s, transform .12s, color .15s;
+  }
+  #controls button:hover { background: rgba(42,42,50,.7); border-color: rgba(255,255,255,.18); }
+  #controls button:active { transform: scale(.92); }
+  #controls button svg { width: 20px; height: 20px; }   /* icons scaled with the +15% buttons */
+  /* mute speaker — relocated to the bottom, riding just right of the voice-meter line. Its colour is
+     linked to the meter: green when live, red when muted, so the icon and the line always match. */
+  #muteBtn {
+    position: fixed; z-index: 15; bottom: 23px; left: calc(50% + 172px); display: none;
+    width: 44px; height: 44px; border-radius: 50%; padding: 0; cursor: pointer;
+    align-items: center; justify-content: center;
+    background: rgba(18,18,22,.55); border: 1px solid rgba(255,255,255,.09); color: #35d07f;
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 6px 22px rgba(0,0,0,.4);
+    transition: left .35s ease, background .15s, border-color .15s, transform .12s, color .15s;
+  }
+  #muteBtn.show { display: flex; }
+  #muteBtn:hover { background: rgba(42,42,50,.7); border-color: rgba(255,255,255,.18); }
+  #muteBtn:active { transform: scale(.92); }
+  #muteBtn svg { width: 20px; height: 20px; }
+  #muteBtn.muted { color: #ff6b6b; }              /* red when muted — matches the meter line */
+  body.drawer-open #muteBtn { left: calc(50% - var(--dw) / 2 + 172px); }
+  #muteBtn .slash { display: none; }
+  #muteBtn.muted .slash { display: inline; }
+  #muteBtn.muted .wave { display: none; }
+  #controls #gearBtn { color: #4da3ff; }         /* sliders icon in azure — matches the look-panel sliders */
+
+  /* look panel — a frosted glass tray of sliders, opened by the gear in the cluster */
+  #lookpanel {
+    position: fixed; top: 62px; right: 14px; z-index: 17; width: 212px;
+    display: none; flex-direction: column; gap: 15px; padding: 16px 16px 18px;
+    background: rgba(20,22,34,.62); border: 1px solid rgba(120,140,255,.18); border-radius: 14px;
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 12px 36px rgba(0,0,0,.5);
+    transition: right .35s ease;
+  }
+  #lookpanel.open { display: flex; }
+  body.drawer-open #lookpanel { right: calc(var(--dw) + 14px); }
+  .lp-row { display: flex; flex-direction: column; gap: 7px; }
+  .lp-row label {
+    font: 600 9px/1 -apple-system, "SF Pro Text", sans-serif; letter-spacing: .14em;
+    text-transform: uppercase; color: #4da3ff;
+  }
+  #lookpanel input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 3px;
+    background: rgba(77,163,255,.30); outline: none; cursor: pointer;
+  }
+  #lookpanel input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: #ffffff; box-shadow: 0 0 0 3px rgba(77,163,255,.22), 0 1px 6px rgba(0,0,0,.5); cursor: pointer;
+    transition: box-shadow .15s;
+  }
+  #lookpanel input[type=range]:hover::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(77,163,255,.32), 0 1px 6px rgba(0,0,0,.5); }
+  /* the default-open state on first paint must not animate (and must size correctly) */
+  body.sf-no-anim #stage, body.sf-no-anim #drawer,
+  body.sf-no-anim #controls, body.sf-no-anim #meter { transition: none !important; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<img id="faceOverlay" alt="" style="display:none">
+<div id="boot">sampling the face…</div>
+<div id="stamp"></div>
+
+<div id="panel">
+  <h1>Phase 1 — the particles talk</h1>
+  <div class="sub">bf_isabella · native visemes · audio-clock sync</div>
+  <div class="sub" style="color:#7CFC00;">build: aperture-mouth-2026-06-24</div>
+
+  <div class="grp">
+    <label class="t">Particle density <span style="color:#666">(drag, release — more = solid surface)</span> <span id="densityRV" style="color:#666"></span></label>
+    <input type="range" id="densityR" min="30000" max="800000" step="10000" value="400000">
+  </div>
+
+  <div class="grp">
+    <label class="t">Mouth-region weighting</label>
+    <div class="seg" id="mouthSeg">
+      <button data-v="0">Off</button>
+      <button data-v="6" class="on">Medium</button>
+      <button data-v="18">Heavy</button>
+    </div>
+  </div>
+
+  <div class="grp">
+    <label class="t">Eyes</label>
+    <div class="seg" id="eyesSeg">
+      <button data-v="1" class="on">Eyes + blinks</button>
+      <button data-v="0">Eyeless</button>
+    </div>
+  </div>
+
+  <div class="grp">
+    <label class="t">Dot size <span id="dotV" style="color:#666"></span></label>
+    <input type="range" id="dotSize" min="0.4" max="4" step="0.05" value="3.55">
+  </div>
+  <div class="grp">
+    <label class="t">Dot opacity <span style="color:#666">(low = lighting headroom, high = glow/clip)</span> <span id="dotOpV" style="color:#666"></span></label>
+    <input type="range" id="dotOp" min="0.08" max="1" step="0.01" value="0.64">
+  </div>
+
+  <div class="grp">
+    <label class="t">Hair chaos <span id="hairV" style="color:#666"></span></label>
+    <input type="range" id="hairChaos" min="0" max="3" step="0.05" value="2">
+  </div>
+  <div class="grp">
+    <label class="t">Hair hides skull <span style="color:#666">(drag, release)</span> <span id="hairCullRV" style="color:#666"></span></label>
+    <input type="range" id="hairCullR" min="0" max="0.05" step="0.002" value="0.020">
+  </div>
+
+  <div class="grp" style="border-top:1px solid #2a2a2e; padding-top:8px; margin-top:12px;">
+    <label class="t" style="color:#bfc6ff;">Hair fit — drag to shape it on her</label>
+    <label class="t">Size <span id="hairScaleRV" style="color:#666"></span></label>
+    <input type="range" id="hairScaleR" min="30" max="320" step="1" value="150">
+    <label class="t">Height (up / down) <span id="hairYRV" style="color:#666"></span></label>
+    <input type="range" id="hairYR" min="-0.25" max="0.2" step="0.002" value="0">
+    <label class="t">Depth (forward / back) <span id="hairZRV" style="color:#666"></span></label>
+    <input type="range" id="hairZR" min="-0.2" max="0.2" step="0.002" value="0">
+    <label class="t">Front fog cull <span style="color:#666">(drag, release)</span> <span id="hairBackRV" style="color:#666"></span></label>
+    <input type="range" id="hairBackR" min="-0.05" max="0.2" step="0.005" value="0.05">
+    <label class="t">Drape cull <span style="color:#666">(drag, release)</span> <span id="hairDropRV" style="color:#666"></span></label>
+    <input type="range" id="hairDropR" min="0" max="0.6" step="0.005" value="0.13">
+    <label class="t">Hair density <span style="color:#666">(own budget · drag, release)</span> <span id="hairDensityRV" style="color:#666"></span></label>
+    <input type="range" id="hairDensityR" min="0" max="1200000" step="20000" value="250000">
+    <label class="t">Hair dot size <span style="color:#666">(ratio of face · drag, release)</span> <span id="hairDotRV" style="color:#666"></span></label>
+    <input type="range" id="hairDotR" min="0.1" max="2" step="0.05" value="0.5">
+    <label class="t">Hair brightness <span style="color:#666">(low = tame the fire · drag, release)</span> <span id="hairBrightRV" style="color:#666"></span></label>
+    <input type="range" id="hairBrightR" min="0.1" max="1.5" step="0.05" value="0.7">
+    <label class="t">Hairline <span style="color:#666">(clear forehead · 0 = full fringe · drag, release)</span> <span id="hairlineRV" style="color:#666"></span></label>
+    <input type="range" id="hairlineR" min="0" max="0.25" step="0.01" value="0.10">
+  </div>
+
+  <div class="grp">
+    <label class="t" style="color:#bfc6ff;">Head depth</label>
+    <label class="t">Back cull <span style="color:#666">(drag, release · lower = thinner)</span> <span id="backRV" style="color:#666"></span></label>
+    <input type="range" id="backR" min="0.02" max="0.35" step="0.005" value="0.07">
+  </div>
+
+  <div class="grp" style="border-top:1px solid #2a2a2e; padding-top:8px; margin-top:12px;">
+    <label class="t" style="color:#bfc6ff;">Mouth shape — drag while she speaks</label>
+  </div>
+  <div class="grp">
+    <label class="t">Lip part <span style="color:#666">(optional · 0 = aperture only)</span> <span id="ulipRV" style="color:#666"></span></label>
+    <input type="range" id="ulipR" min="0" max="1" step="0.02" value="0">
+  </div>
+  <div class="grp">
+    <label class="t">Mouth opening <span id="jawRV" style="color:#666"></span></label>
+    <input type="range" id="jawR" min="0.01" max="0.15" step="0.005" value="0.06">
+  </div>
+  <div class="grp">
+    <label class="t">Mouth width <span id="cwRV" style="color:#666"></span></label>
+    <input type="range" id="cwR" min="0.03" max="0.10" step="0.005" value="0.045">
+  </div>
+  <div class="grp">
+    <label class="t">Mouth darkness <span id="voidRV" style="color:#666"></span></label>
+    <input type="range" id="voidR" min="0" max="1" step="0.05" value="1">
+  </div>
+  <div class="grp">
+    <label class="t">Lip highlight <span style="color:#666">(rim glow framing the opening)</span> <span id="rimGlowRV" style="color:#666"></span></label>
+    <input type="range" id="rimGlowR" min="0" max="1" step="0.05" value="0.2">
+  </div>
+  <div class="grp">
+    <label class="t">Mouth height <span style="color:#666">(drag, release — onto the lips)</span> <span id="moyRV" style="color:#666"></span></label>
+    <input type="range" id="moyR" min="-0.12" max="0.06" step="0.002" value="0">
+  </div>
+  <div class="grp">
+    <label class="t">Mouth depth <span style="color:#666">(drag, release)</span> <span id="mozRV" style="color:#666"></span></label>
+    <input type="range" id="mozR" min="-0.08" max="0.08" step="0.005" value="0">
+  </div>
+
+  <div class="grp" style="border-top:1px solid #2a2a2e; padding-top:8px; margin-top:12px;">
+    <label class="t" style="color:#bfc6ff;">Striation — horizontal scan-lines</label>
+  </div>
+  <div class="grp">
+    <label class="t">Striation <span id="striRV" style="color:#666"></span></label>
+    <input type="range" id="striR" min="0" max="1" step="0.02" value="0.08">
+  </div>
+  <div class="grp">
+    <label class="t">Spacing <span id="striSpaceRV" style="color:#666"></span></label>
+    <input type="range" id="striSpaceR" min="0.006" max="0.04" step="0.002" value="0.006">
+  </div>
+  <div class="grp">
+    <label class="t">Crispness <span id="striCrispRV" style="color:#666"></span></label>
+    <input type="range" id="striCrispR" min="0" max="1" step="0.02" value="0.78">
+  </div>
+  <div class="grp">
+    <label class="t">Contour <span style="color:#666">(lines → rings)</span> <span id="striContourRV" style="color:#666"></span></label>
+    <input type="range" id="striContourR" min="0" max="1" step="0.02" value="0">
+  </div>
+  <div class="grp">
+    <label class="t">Contour auto <span style="color:#666">(smooth 0↔1 roam)</span> <span id="striAutoRV" style="color:#666"></span></label>
+    <input type="range" id="striAutoR" min="0" max="3" step="0.05" value="3.0">
+  </div>
+  <div class="grp">
+    <label class="t">Spacing drift <span id="striDriftRV" style="color:#666"></span></label>
+    <input type="range" id="striDriftR" min="0" max="0.003" step="0.0002" value="0">
+  </div>
+
+  <div class="grp" style="border-top:1px solid #2a2a2e; padding-top:8px; margin-top:12px;">
+    <label class="t" style="color:#bfc6ff;">Feature density — eyes / nose / cheekbones <span style="color:#666">(drag, release to apply)</span></label>
+  </div>
+  <div class="grp">
+    <label class="t">Feature density <span id="featRV" style="color:#666"></span></label>
+    <input type="range" id="featR" min="0" max="6" step="0.1" value="3.9">
+  </div>
+  <div class="grp">
+    <label class="t">Edge dissolve <span id="edgeRV" style="color:#666"></span></label>
+    <input type="range" id="edgeR" min="0" max="1.5" step="0.05" value="0.1">
+  </div>
+
+  <div class="grp" style="border-top:1px solid #2a2a2e; padding-top:8px; margin-top:12px;">
+    <label class="t" style="color:#bfc6ff;">Lighting — directional key</label>
+  </div>
+  <div class="grp">
+    <label class="t">Brightness <span style="color:#666">(exposure · push high = blow out)</span> <span id="exposureRV" style="color:#666"></span></label>
+    <input type="range" id="exposureR" min="0.1" max="3" step="0.02" value="0.7">
+  </div>
+  <div class="grp">
+    <label class="t" style="color:#bfc6ff;">— KEY light (shape) —</label>
+  </div>
+  <div class="grp">
+    <label class="t">Modeling <span style="color:#666">(shape contrast — THE shape knob)</span> <span id="modelRV" style="color:#666"></span></label>
+    <input type="range" id="modelR" min="1" max="6" step="0.1" value="3.0">
+  </div>
+  <div class="grp">
+    <label class="t">Shadow darkness <span style="color:#666">(top = crush to black)</span> <span id="lightRV" style="color:#666"></span></label>
+    <input type="range" id="lightR" min="0" max="1" step="0.02" value="0.6">
+  </div>
+  <div class="grp">
+    <label class="t">Key angle <span style="color:#666">(swing L/R · 0 = front)</span> <span id="lightAzRV" style="color:#666"></span></label>
+    <input type="range" id="lightAzR" min="-1.6" max="1.6" step="0.05" value="0.6">
+  </div>
+  <div class="grp">
+    <label class="t">Key height <span id="lightElRV" style="color:#666"></span></label>
+    <input type="range" id="lightElR" min="-0.5" max="1.2" step="0.05" value="0.35">
+  </div>
+  <div class="grp">
+    <label class="t" style="color:#bfc6ff;">— FILL light (lifts shadow side) —</label>
+  </div>
+  <div class="grp">
+    <label class="t">Fill amount <span id="fillRV" style="color:#666"></span></label>
+    <input type="range" id="fillR" min="0" max="1" step="0.02" value="0.12">
+  </div>
+  <div class="grp">
+    <label class="t">Fill angle <span style="color:#666">(0 = front)</span> <span id="fillAzRV" style="color:#666"></span></label>
+    <input type="range" id="fillAzR" min="-1.6" max="1.6" step="0.05" value="-0.55">
+  </div>
+  <div class="grp">
+    <label class="t">Fill height <span id="fillElRV" style="color:#666"></span></label>
+    <input type="range" id="fillElR" min="-0.5" max="1.2" step="0.05" value="0.10">
+  </div>
+
+  <div class="grp" style="border-top:1px solid #2a2a2e; padding-top:8px; margin-top:12px;">
+    <label class="t" style="color:#bfc6ff;">Reference overlay — align, then place eyes</label>
+  </div>
+  <div class="grp">
+    <label class="t">Overlay opacity <span style="color:#666">(0 = off)</span> <span id="ovOpacityV" style="color:#666"></span></label>
+    <input type="range" id="ovOpacity" min="0" max="0.8" step="0.02" value="0">
+  </div>
+  <div class="grp">
+    <label class="t">Overlay scale <span id="ovScaleV" style="color:#666"></span></label>
+    <input type="range" id="ovScale" min="30" max="140" step="1" value="80">
+  </div>
+  <div class="grp">
+    <label class="t">Overlay up/down <span id="ovYV" style="color:#666"></span></label>
+    <input type="range" id="ovY" min="-40" max="40" step="1" value="0">
+  </div>
+  <div class="grp">
+    <label class="t">Overlay left/right <span id="ovXV" style="color:#666"></span></label>
+    <input type="range" id="ovX" min="-40" max="40" step="1" value="0">
+  </div>
+
+  <div class="grp" style="border-top:1px solid #2a2a2e; padding-top:8px; margin-top:12px;">
+    <label class="t" style="color:#bfc6ff;">Eyes — shape first, then glow / blink</label>
+  </div>
+  <div class="grp">
+    <label class="t">Eye size <span id="eyeRRV" style="color:#666"></span></label>
+    <input type="range" id="eyeRR" min="0.003" max="0.04" step="0.001" value="0.006">
+  </div>
+  <div class="grp">
+    <label class="t">Eye density <span style="color:#666">(drag, release)</span> <span id="eyeDensRV" style="color:#666"></span></label>
+    <input type="range" id="eyeDensR" min="0" max="60" step="1" value="6">
+  </div>
+  <div class="grp">
+    <label class="t">Eye separation <span id="eyeSepRV" style="color:#666"></span></label>
+    <input type="range" id="eyeSepR" min="0.01" max="0.18" step="0.002" value="0.10">
+  </div>
+  <div class="grp">
+    <label class="t">Eye height <span id="eyeHRV" style="color:#666"></span></label>
+    <input type="range" id="eyeHR" min="-0.08" max="0.14" step="0.001" value="-0.003">
+  </div>
+  <div class="grp">
+    <label class="t">Pupil darkness <span id="eyePupilRV" style="color:#666"></span></label>
+    <input type="range" id="eyePupilR" min="0" max="1" step="0.05" value="0.2">
+  </div>
+  <div class="grp">
+    <label class="t">Iris glow <span id="eyeGlowRV" style="color:#666"></span></label>
+    <input type="range" id="eyeGlowR" min="0" max="2" step="0.05" value="0.35">
+  </div>
+  <div class="grp">
+    <label class="t">Blink rate <span style="color:#666">(0 = off)</span> <span id="blinkRV" style="color:#666"></span></label>
+    <input type="range" id="blinkR" min="0" max="2.5" step="0.05" value="0">
+  </div>
+
+  <div class="grp" style="border-top:1px solid #2a2a2e; padding-top:8px; margin-top:12px;">
+    <label class="t" style="color:#bfc6ff;">Procedural relief — carve structure the mesh lacks</label>
+  </div>
+  <div class="grp">
+    <label class="t">Eye socket <span id="socketRV" style="color:#666"></span></label>
+    <input type="range" id="socketR" min="0" max="1" step="0.05" value="0.4">
+  </div>
+  <div class="grp">
+    <label class="t">Nose definition <span id="noseDefRV" style="color:#666"></span></label>
+    <input type="range" id="noseDefR" min="0" max="1" step="0.05" value="0.5">
+  </div>
+
+  <div class="grp">
+    <label class="t">Speak</label>
+    <select id="line">
+      <option value="paragraph">★ The Phase 1 paragraph</option>
+      <option>Hello there. I'm rather pleased to finally have a face, even one made of stardust.</option>
+      <option>Peter Piper picked a peck of pickled peppers, properly and precisely.</option>
+      <option>Would you like me to read your morning briefing, or shall we build something brilliant?</option>
+      <option>The quick brown fox jumps over the lazy dog while we watch the world wobble.</option>
+      <option>I can't take a bath in Bath; that's half the battle, after all.</option>
+    </select>
+    <button id="speak">Speak</button>
+    <div class="row">
+      <button id="loop">Mouth-only loop</button>
+      <button id="stop">Stop</button>
+    </div>
+    <div id="status">idle</div>
+  </div>
+</div>
+
+<div id="hud"></div>
+
+<!-- M3.2 terminal drawer: scrolling transcript + docked footer (thinking row, input, status line). -->
+<!-- The input/thinking moved here from the old bottom-centre talkbar. Gated to app/bridge in main.js. -->
+<aside id="drawer">
+  <div id="transcript"></div>
+  <div id="drawerfoot">
+    <div id="thinking"><span class="dots"><span></span><span></span><span></span></span><span id="thinkword"></span></div>
+    <input id="talkInput" type="text" placeholder="talk to her…" autocomplete="off" autocapitalize="sentences" spellcheck="false">
+    <div id="statusLine"></div>
+    <div id="statusbar"></div>
+  </div>
+</aside>
+<!-- award-grade chrome (gated to app/bridge in main.js): identity pill, voice meter, glassy control cluster -->
+<div id="idpill"><span class="dot"></span><span id="idname"></span></div>
+<canvas id="meter"></canvas>
+<!-- mute speaker: relocated out of the top cluster to ride just right of the meter line, colour-linked to it -->
+<button id="muteBtn" type="button" aria-label="Mute">
+  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 5 6 9H3v6h3l5 4V5z"/>
+    <path class="wave" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/>
+    <line class="slash" x1="3.5" y1="20.5" x2="20.5" y2="3.5"/>
+  </svg>
+</button>
+<div id="controls">
+  <button id="gearBtn" type="button" aria-label="Adjust look">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+      <line x1="4" y1="8.5" x2="20" y2="8.5"/><circle cx="9" cy="8.5" r="2.4" fill="currentColor" stroke="none"/>
+      <line x1="4" y1="15.5" x2="20" y2="15.5"/><circle cx="15" cy="15.5" r="2.4" fill="currentColor" stroke="none"/>
+    </svg>
+  </button>
+  <button id="drawerToggle" type="button" aria-label="Toggle transcript">‹</button>
+</div>
+<div id="lookpanel">
+  <div class="lp-row"><label>Volume</label><input id="sl-vol" type="range" min="0" max="1" step="0.01" value="1"></div>
+  <div class="lp-row"><label>Brightness</label><input id="sl-glow" type="range" min="0.1" max="3" step="0.02" value="0.7"></div>
+  <div class="lp-row"><label>Shimmer</label><input id="sl-size" type="range" min="1" max="5" step="0.05" value="3.55"></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./node_modules/three/build/three.module.js",
+    "three/addons/": "./node_modules/three/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="./main.js?v=20260701-mute-relocate"></script>
+</body>
+</html>

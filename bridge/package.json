@@ -1,0 +1,13 @@
+{
+  "name": "claude-face-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "M3 two-way talking bridge: talk box -> Claude session -> Claude Face (and one-way claude-say).",
+  "scripts": {
+    "start": "node relay.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

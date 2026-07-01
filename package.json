@@ -1,0 +1,15 @@
+{
+  "name": "claude-face",
+  "version": "1.0.0",
+  "description": "Claude Face -- a WebGL particle face you can talk to. One command runs the phase1 page server and the local bridge relay.",
+  "private": false,
+  "type": "module",
+  "license": "CC0-1.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node start.mjs",
+    "serve": "node phase1/serve.mjs"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "claude-face-phase1",
+  "version": "1.0.0",
+  "description": "Phase 1 -- the particles talk (HeadTTS bf_isabella drives the S2 particle face)",
+  "scripts": {
+    "serve": "node serve.mjs"
+  },
+  "license": "CC0-1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "three": "^0.184.0"
+  }
+}

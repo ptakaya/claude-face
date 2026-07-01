@@ -1,12 +1,14 @@
 # Claude Face
 
-### Claude Gets a Face
+### Give Claude a face
 
 > **Unofficial community project.** Not affiliated with, endorsed by, or produced by Anthropic. "Claude" is a trademark of Anthropic; this repo simply gives one a face.
 
-A WebGL particle "talking head" -- a face rendered as a cloud of ~800k dots that lip-syncs to speech -- with an optional two-way voice bridge to a Claude brain, so you can talk to it and it talks back.
+**Your AI assistant, with a face that talks back.** A WebGL particle "talking head" -- a face rendered as a cloud of ~800k dots that lip-syncs to speech -- wired to your own local Claude. Type to it and Claude answers *out loud*, through the face. It's the "give your Jarvis a face" idea, made real.
 
-The face is plain browser + Node. The bridge is optional. The Claude brain is optional. You can run just the face, or add a mock brain, or wire in a real Claude Code session.
+**[▶ Try the live demo](https://ptakaya.github.io/claude-face/)** -- drag to orbit her in your browser, no install needed. *(The live demo is the face itself; the two-way talking runs locally via the bridge, below.)*
+
+The face is plain browser + Node -- no build step, and **no `npm install` to render it** (Three.js loads from a pinned CDN). The bridge is optional. The Claude brain is optional. Run just the face, add a mock brain, or wire in a real Claude Code session.
 
 ---
 
@@ -27,14 +29,13 @@ Swaps the mock for a real Claude Code session. Requires **Claude Code installed 
 
 ## Quickstart
 
-Copy-paste. Level 2 (mock) is the recommended first run -- it needs no Claude. **Shortcut:** after the two `npm install`s below, run `npm start` from the repo root to launch both servers at once. Or run them in two terminals:
+Copy-paste. Level 2 (mock) is the recommended first run -- it needs no Claude. **Shortcut:** after the bridge `npm install` below, run `npm start` from the repo root to launch both servers at once. Or run them in two terminals:
 
 ### Terminal A -- serve the face (:8610)
 
 ```bash
 cd phase1
-npm install     # installs Three.js (the page imports it from ./node_modules)
-npm run serve   # zero-dependency Node static server on :8610 (loopback only)
+npm run serve   # zero-dependency Node static server on :8610 (Three.js loads from a pinned CDN — no install, no build)
 ```
 
 Then open:

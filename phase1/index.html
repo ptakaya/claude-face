@@ -515,11 +515,13 @@
   <div class="lp-row"><label>Shimmer</label><input id="sl-size" type="range" min="1" max="5" step="0.05" value="3.55"></div>
 </div>
 
+<!-- Three.js is loaded from a pinned CDN, so the face page needs no `npm install` (serve.mjs is
+     zero-dependency) and runs as-is when hosted (e.g. GitHub Pages), where node_modules is absent. -->
 <script type="importmap">
 {
   "imports": {
-    "three": "./node_modules/three/build/three.module.js",
-    "three/addons/": "./node_modules/three/examples/jsm/"
+    "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
   }
 }
 </script>

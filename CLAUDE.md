@@ -4,7 +4,7 @@ You are an AI coding agent on a fresh clone of **Claude Face**: a WebGL particle
 
 ## What runs where
 
-- **Face** -- `phase1/`, a static browser page (Three.js via importmap from `./node_modules`). Must be served over HTTP on **port 8610**.
+- **Face** -- `phase1/`, a static browser page (Three.js via importmap from a pinned CDN). Must be served over HTTP on **port 8610**.
 - **Bridge** -- `bridge/`, a Node relay on `127.0.0.1:8765`. Optional. Two backends: `mock` (default, safe, no Claude) and `cli` (real Claude Code).
 - **Voice** -- HeadTTS, a separate repo you clone; the face calls it at `http://127.0.0.1:8882/v1/synthesize`. Optional.
 
@@ -18,11 +18,10 @@ You are an AI coding agent on a fresh clone of **Claude Face**: a WebGL particle
 
 ```bash
 cd phase1
-npm install
 npm run serve        # zero-dependency Node static server on :8610 (loopback only)
 ```
 
-`npm install` is mandatory: `index.html` imports Three.js from `./node_modules/three` via an importmap. `npm run serve` runs the shipped `serve.mjs` (no Python needed). Alternatively, from the repo root, `npm start` launches both the face server and the bridge at once.
+No `npm install` is needed for the face: `index.html` imports Three.js from a pinned CDN via an importmap, and `serve.mjs` has no dependencies. `npm run serve` runs the shipped `serve.mjs` (no Python needed). Alternatively, from the repo root, `npm start` launches both the face server and the bridge at once.
 
 Open (or tell the user to open):
 

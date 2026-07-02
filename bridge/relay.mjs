@@ -203,8 +203,13 @@ function handleAsk(ws, data) {
 server.listen(PORT, "127.0.0.1", () => {
   // Carry bridgePort so the page's WS targets THIS relay even under a non-default SF_BRIDGE_PORT.
   const pageUrl = `http://localhost:${PAGE_PORT}/?app=1&token=${TOKEN}&bridgePort=${PORT}`;
+  // The tools label must tell the truth: BRAIN_TOOLS="" is a talk-only face, a token list is
+  // a narrowed set, and only the undefined default is the full bypassPermissions toolset.
+  const toolsLabel = brain.tools === undefined
+    ? "FULL POWER — full tools + MCP + bypassPermissions"
+    : (brain.tools === "" ? "talk-only — all tools disabled (BRAIN_TOOLS=\"\")" : `tools narrowed to: ${brain.tools}`);
   const brainLabel = brain.backend === "cli"
-    ? `Claude (cli) · model ${brain.model} · FULL POWER — full tools + MCP + bypassPermissions`
+    ? `Claude (cli) · model ${brain.model} · ${toolsLabel}`
     : "mock (set BRAIN_BACKEND=cli for the real Claude)";
   console.log(`Claude Face bridge up on 127.0.0.1:${PORT} (loopback only)`);
   console.log(`  brain  ->  ${brainLabel}`);

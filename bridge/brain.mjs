@@ -266,7 +266,7 @@ export function createBrain(opts = {}) {
   }
 
   return {
-    ask, reset, backend, cwd,
+    ask, reset, backend, cwd, tools,
     setModel(m) { model = m; },     // /model command: takes effect on the next spawned turn
     setEffort(e) { effort = e; },   // /effort command: same, applied on the next spawn
     get model() { return model; },  // reassignable now, so expose via getter (relay logs it, /model swaps it)

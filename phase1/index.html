@@ -47,7 +47,7 @@
   }
 
   /* ---- M3 terminal chrome: thinking dots + rotating word + input, all docked in the drawer footer ---- */
-  /* Hidden by default; shown in app/bridge mode with the drawer. Default dev page is byte-for-byte unchanged. */
+  /* Hidden by default; the drawer only shows when a bridge is in play (see BRIDGED in main.js). */
   #thinking { display: none; align-items: center; gap: 8px; height: 14px; }
   #thinking.show { display: flex; }
   #thinking .dots { display: inline-flex; gap: 6px; align-items: center; }
@@ -72,11 +72,11 @@
   #talkInput::placeholder { color: #7a7a82; }
   #talkInput:focus { border-color: #5b6cff; box-shadow: 0 0 0 2px rgba(40,60,255,.18); }
   #talkInput.heard { border-color: #3ad29f; box-shadow: 0 0 0 2px rgba(58,210,159,.18); }
-  /* app mode: the pure standalone window — hide the dev chrome so her face + box are all you see */
+  /* app mode (the DEFAULT page): hide the dev chrome so her face is all you see; ?panel=1 restores it */
   body.app #panel, body.app #hud, body.app #stamp { display: none !important; }
 
   /* ---- M3.2 transcript drawer (push): narrows #stage so the canvas refits the visible pane ---- */
-  /* Gated on in app/bridge via .show (added in main.js); the default dev page is unchanged. */
+  /* Gated on via .show (added in main.js when a bridge is in play). */
   :root { --dw: 480px; }
   #stage { transition: right .35s ease; }
   body.drawer-open #stage { right: var(--dw); }
@@ -150,6 +150,9 @@
   #controls button:hover { background: rgba(42,42,50,.7); border-color: rgba(255,255,255,.18); }
   #controls button:active { transform: scale(.92); }
   #controls button svg { width: 20px; height: 20px; }   /* icons scaled with the +15% buttons */
+  /* the transcript toggle only exists when a bridge is in play (main.js adds .show alongside the drawer) */
+  #controls #drawerToggle { display: none; }
+  #controls #drawerToggle.show { display: flex; }
   /* mute speaker — relocated to the bottom, riding just right of the voice-meter line. Its colour is
      linked to the meter: green when live, red when muted, so the icon and the line always match. */
   #muteBtn {

@@ -29,7 +29,7 @@ Open (or tell the user to open):
 http://localhost:8610/
 ```
 
-The shipped head (`phase1/vendor/head-default.glb`) loads by default -- no query params needed. The page needs one **click anywhere** to unlock browser audio.
+The shipped head (`phase1/vendor/head-default.glb`) loads by default -- no query params needed. The bare page is the clean app window (no talk drawer; that appears only when a bridge URL is used). `?panel=1` opens the full tuning dashboard if the user asks to adjust her look. The page needs one **click anywhere** to unlock browser audio.
 
 This alone is Level 1 (the face). It renders and animates without Claude and without voice.
 

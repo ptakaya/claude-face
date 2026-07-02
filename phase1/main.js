@@ -1762,9 +1762,10 @@ if (state.say) {
 }
 
 // ---------- M3 talk UI: the standalone-window chrome (text box + thinking dots) -----
-// Opt-in via ?bridge=1 (or ?app=1 for the clean, dev-chrome-free window). This adds the
-// LOOK only; the submit hook (onTalkSubmit) is wired by the bridge block below in Stage 3.
-// Without a hook, Enter just echoes locally so the box can be judged on its own (Stage 2).
+// The clean app window is now the default page; the talk drawer itself appears only when a
+// bridge is in play (see APP/BRIDGED below). This section adds the LOOK only; the submit
+// hook (onTalkSubmit) is wired by the bridge block below in Stage 3. Without a hook, Enter
+// just echoes locally so the box can be judged on its own (Stage 2).
 const talkInput = document.getElementById("talkInput");
 const thinkingEl = document.getElementById("thinking");
 const drawer = document.getElementById("drawer");
@@ -1860,9 +1861,38 @@ if (stageEl) stageEl.addEventListener("transitionend", (e) => { if (e.propertyNa
 if (drawerToggle) drawerToggle.addEventListener("click", () =>
   setDrawer(!document.body.classList.contains("drawer-open")));
 
-if (params.has("app")) document.body.classList.add("app");
+// The clean app window is the DEFAULT — this is the public product view. ?panel=1 restores the
+// full tuning dashboard (the old dev page: #panel + #hud + #stamp). ?app=1 still forces app
+// chrome even alongside ?panel=1 (the relay-printed URLs carry it; also the tuning combo).
+const APP = params.has("app") || !params.has("panel");
+// The talk drawer + WebSocket exist only when a bridge is plausibly in play: the relay-printed
+// URL (?token=…&bridgePort=…) or an explicit ?bridge=1. A bare page (hosted demo, Level 1
+// `npm run serve`) gets the clean face — no dead talk box, no doomed reconnect loop.
+const BRIDGED = params.has("bridge") || params.has("token") || params.has("bridgePort");
+if (APP) document.body.classList.add("app");
 if (params.has("panel")) { const dp = document.getElementById("panel"); if (dp) { dp.style.setProperty("display", "block", "important"); dp.style.setProperty("z-index", "9999", "important"); } } // &panel=1 reveals the full dev dashboard INSIDE the app window (shared-language tuning) — overrides the body.app hide AND lifts it above the transcript drawer
-if (talkInput && (params.has("bridge") || params.has("app"))) {
+
+// Award-grade chrome (voice meter, identity pill, glassy controls: mute + gear look-panel) belongs
+// to the app window itself — bridged or not, hosted or local.
+if (APP) {
+  ["meter", "idpill", "controls", "muteBtn"].forEach((id) => { const el = document.getElementById(id); if (el) el.classList.add("show"); });
+  // configurable identity: ?name=Claude personalises the pill; ships generic so it's giveaway-safe
+  const idname = document.getElementById("idname"); if (idname) idname.textContent = params.get("name") || "Assistant";
+  sizeMeter(); addEventListener("resize", sizeMeter);
+  const muteBtn = document.getElementById("muteBtn");
+  if (muteBtn) muteBtn.addEventListener("click", () => { ensureBus(); setMuted(!muted); });
+  // gear -> look panel; sliders drive her live (volume = real audio; glow/shimmer = her particle material)
+  const gearBtn = document.getElementById("gearBtn"), lookpanel = document.getElementById("lookpanel");
+  if (gearBtn && lookpanel) gearBtn.addEventListener("click", () => lookpanel.classList.toggle("open"));
+  const slVol = document.getElementById("sl-vol");
+  if (slVol) slVol.addEventListener("input", (e) => { volume = +e.target.value; ensureBus(); if (masterGain && !muted) masterGain.gain.value = volume; });
+  const slGlow = document.getElementById("sl-glow");
+  if (slGlow) { slGlow.value = EXPOSURE; slGlow.addEventListener("input", (e) => { EXPOSURE = +e.target.value; }); } // "Brightness" drives EXPOSURE, not opacity: the rolloff caps per-dot brightness, so raising it lifts the shadows / evens the face WITHOUT blowing the dense forehead (raising opacity WOULD blow it). Thumb starts at the live value so the first touch never jumps.
+  const slSize = document.getElementById("sl-size");
+  if (slSize) { slSize.value = state.dotScale; slSize.addEventListener("input", (e) => { state.dotScale = +e.target.value; updateDotSize(); }); } // source of truth, survives density changes; thumb starts at the live dot size
+}
+
+if (talkInput && BRIDGED) {
   talkInput.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
     e.preventDefault();
@@ -1885,32 +1915,16 @@ if (talkInput && (params.has("bridge") || params.has("app"))) {
     setDrawer(true, false);
     resize();
     requestAnimationFrame(() => document.body.classList.remove("sf-no-anim"));
-    // award-grade chrome: voice meter, identity pill, glassy control cluster (mute lives here)
-    ["meter", "idpill", "controls", "muteBtn"].forEach((id) => { const el = document.getElementById(id); if (el) el.classList.add("show"); });
-    // configurable identity: ?name=Claude personalises the pill; ships generic so it's giveaway-safe
-    const idname = document.getElementById("idname"); if (idname) idname.textContent = params.get("name") || "Assistant";
-    sizeMeter(); addEventListener("resize", sizeMeter);
-    const muteBtn = document.getElementById("muteBtn");
-    if (muteBtn) muteBtn.addEventListener("click", () => { ensureBus(); setMuted(!muted); });
-    // gear -> look panel; sliders drive her live (volume = real audio; glow/shimmer = her particle material)
-    const gearBtn = document.getElementById("gearBtn"), lookpanel = document.getElementById("lookpanel");
-    if (gearBtn && lookpanel) gearBtn.addEventListener("click", () => lookpanel.classList.toggle("open"));
-    const slVol = document.getElementById("sl-vol");
-    if (slVol) slVol.addEventListener("input", (e) => { volume = +e.target.value; ensureBus(); if (masterGain && !muted) masterGain.gain.value = volume; });
-    const slGlow = document.getElementById("sl-glow");
-    if (slGlow) { slGlow.value = EXPOSURE; slGlow.addEventListener("input", (e) => { EXPOSURE = +e.target.value; }); } // "Brightness" drives EXPOSURE, not opacity: the rolloff caps per-dot brightness, so raising it lifts the shadows / evens the face WITHOUT blowing the dense forehead (raising opacity WOULD blow it). Thumb starts at the live value so the first touch never jumps.
-    const slSize = document.getElementById("sl-size");
-    if (slSize) { slSize.value = state.dotScale; slSize.addEventListener("input", (e) => { state.dotScale = +e.target.value; updateDotSize(); }); } // source of truth, survives density changes; thumb starts at the live dot size
   }
 }
 
 // ---------- M1 talking bridge (one-way: this terminal session -> her mouth) -------
-// Opt-in via ?bridge=1, so the default page is byte-for-byte unchanged. A tiny local
-// relay (bridge/relay.mjs) pushes {type:"say", text} frames over a 127.0.0.1 WebSocket;
-// each line goes straight to speak() — the same seam the Speak button uses, so the
-// audio-clock viseme sync is identical. Nothing is spoken unless someone deliberately
-// fires `claude-say "…"`. Two-way voice (mic in) is a later phase. (2026-06-24)
-if (params.has("bridge") || params.has("app")) {
+// Gated on BRIDGED (a token/bridgePort on the URL, or ?bridge=1), so the bare public page
+// never opens a doomed WebSocket. A tiny local relay (bridge/relay.mjs) pushes
+// {type:"say", text} frames over a 127.0.0.1 WebSocket; each line goes straight to
+// speak() — the same seam the Speak button uses, so the audio-clock viseme sync is
+// identical. Nothing is spoken unless someone deliberately fires `claude-say "…"`. (2026-06-24)
+if (BRIDGED) {
   const token = params.get("token") || ""; // no published default — the relay prints the URL with the real per-install token
   const port = params.get("bridgePort") || "8765";
 

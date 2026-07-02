@@ -4,6 +4,8 @@
 
 > **Unofficial community project.** Not affiliated with, endorsed by, or produced by Anthropic. "Claude" is a trademark of Anthropic; this repo simply gives one a face.
 
+[![Claude Face -- a talking head rendered as ~800k particles](docs/hero.png)](https://ptakaya.github.io/claude-face/)
+
 **Your AI assistant, with a face that talks back.** A WebGL particle "talking head" -- a face rendered as a cloud of ~800k dots that lip-syncs to speech -- wired to your own local Claude. Type to it and Claude answers *out loud*, through the face. It's the "give your Jarvis a face" idea, made real.
 
 **[▶ Try the live demo](https://ptakaya.github.io/claude-face/)** -- drag to orbit her in your browser, no install needed. *(The live demo is the face itself; the two-way talking runs locally via the bridge, below.)*
@@ -44,7 +46,9 @@ Then open:
 http://localhost:8610/
 ```
 
-The shipped head loads by default -- no query params needed. **Click once anywhere on the page** to unlock browser audio (browsers block sound until a user gesture lands). That is enough to see Level 1. (To also *hear* her, run the optional voice engine -- see [Voice](#voice-optional-all-levels).)
+The shipped head loads by default -- no query params needed. You get the clean app window (the same view as the live demo). **Click once anywhere on the page** to unlock browser audio (browsers block sound until a user gesture lands). That is enough to see Level 1. (To also *hear* her, run the optional voice engine -- see [Voice](#voice-optional-all-levels).)
+
+Want to play with her look? Add **`?panel=1`** to the URL to open the full tuning dashboard -- particle density, mouth weighting, eyes, hair, lighting, and a Speak test button.
 
 ### Terminal B -- run the bridge (Levels 2 and 3)
 

@@ -62,7 +62,7 @@ BRAIN_BACKEND=cli BRAIN_CWD="/absolute/path/to/a/workspace" npm start
 
 - `BRAIN_BACKEND=cli` -- spawn a real headless `claude -p` per turn (it exits when the turn ends; nothing stays running).
 - `BRAIN_CWD` -- the working directory the session runs in. Optional; defaults to the repo root. If set, use a real, absolute path.
-- Prerequisite: **Claude Code installed and authenticated** on this machine.
+- Prerequisite: **the Claude Code CLI installed and authenticated** on this machine -- the `claude` terminal command must exist (check with `claude --version`). The Claude desktop chat app alone does NOT provide it; if it is missing, install from https://claude.com/claude-code before enabling `cli`.
 - Optional dials: `BRAIN_MODEL` (default `sonnet`), `BRAIN_EFFORT`, `BRAIN_TOOLS` (unset = full tools; `""` = read-only face), `SF_BRIDGE_PORT`, `SF_PAGE_PORT`.
 
 ### Security -- mandatory before enabling `cli`

@@ -14,6 +14,7 @@
  * browser page from connecting. (2026-06-25)
  */
 import http from "node:http";
+import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -195,7 +196,18 @@ function handleAsk(ws, data) {
     onActivity: (line) => sendTo(ws, { type: "activity", text: line, ts: Date.now() }), // true-CLI: shown, not spoken
     onStatus: (meta) => sendTo(ws, { type: "status", ...meta, ts: Date.now() }), // model + context% + tokens burned, scoped to the asking page
     onBusy: () => { console.log("[ask] busy — dropped an overlapping line"); sendTo(ws, { type: "thinking", on: false }); },
-    onError: (err) => { console.log(`[ask] error: ${err.message}`); sendTo(ws, { type: "thinking", on: false }); sayTo(ws, "Sorry, I lost my thread for a moment. Could you say that again?"); },
+    onError: (err) => {
+      console.log(`[ask] error: ${err.message}`);
+      sendTo(ws, { type: "thinking", on: false });
+      // A missing CLI is a setup problem, not a hiccup — telling the user to "say that again"
+      // would send them in circles. Name the actual fix, in the console AND through the face.
+      if (err.code === "ENOENT" || /ENOENT/.test(err.message)) {
+        console.log(`[ask] the \`claude\` command was not found. The cli backend needs the Claude Code CLI installed and signed in (https://claude.com/claude-code) — the Claude desktop app alone does not include it. (Or point BRAIN_CLI_BIN at the binary.)`);
+        sayTo(ws, "I could not find the claude command on this machine. The real brain needs the Claude Code terminal command installed and signed in. The Claude desktop app alone is not enough.");
+      } else {
+        sayTo(ws, "Sorry, I lost my thread for a moment. Could you say that again?");
+      }
+    },
     onDone: () => sendTo(ws, { type: "thinking", on: false }),
   });
 }
@@ -213,6 +225,18 @@ server.listen(PORT, "127.0.0.1", () => {
     : "mock (set BRAIN_BACKEND=cli for the real Claude)";
   console.log(`Claude Face bridge up on 127.0.0.1:${PORT} (loopback only)`);
   console.log(`  brain  ->  ${brainLabel}`);
+  if (brain.backend === "cli") {
+    // Fail loudly at startup, not on the first ask: the cli backend is useless without the
+    // Claude Code CLI, and the most common trap is having only the Claude desktop app.
+    const isWin = process.platform === "win32";
+    const bin = process.env.BRAIN_CLI_BIN || (isWin ? "claude.cmd" : "claude");
+    const probe = spawnSync(isWin ? "where" : "which", [bin], { stdio: "ignore" });
+    if (probe.status !== 0) {
+      console.log(`  WARNING -> '${bin}' not found on PATH — asks WILL fail.`);
+      console.log(`             Install the Claude Code CLI and sign in: https://claude.com/claude-code`);
+      console.log(`             (The Claude desktop app alone does not include it. Or set BRAIN_CLI_BIN.)`);
+    }
+  }
   console.log(`  token  ->  ${TOKEN_SOURCE}`);
   console.log(`\n  Open the face in a browser:`);
   console.log(`     ${pageUrl}`);

@@ -25,7 +25,7 @@ The particle head renders in the browser and lip-syncs. No bridge, no Claude acc
 Adds the bridge relay running with its **default `mock` backend**. You type into a talk box, and a deterministic canned reply streams back through her mouth. This proves the whole two-way plumbing -- WebSocket, streaming sentences, "thinking" dots, viseme playback -- with **zero Claude account and zero usage**. Node only.
 
 ### Level 3 -- the real Claude brain (`BRAIN_BACKEND=cli`)
-Swaps the mock for a real Claude Code session. Requires **Claude Code installed and authenticated** on the machine. Each turn spawns a fresh headless `claude -p`, streams the reply, and exits -- **no terminal stays open**, nothing is left running between turns. **`BRAIN_CWD`** sets the working directory the session runs in (defaults to this repo). Read the [Security](#security) note before you enable this.
+Swaps the mock for a real Claude Code session. Requires **Claude Code installed and authenticated** on the machine -- specifically the **CLI** (the `claude` terminal command, installed from [claude.com/claude-code](https://claude.com/claude-code)). **The Claude desktop chat app alone is not enough** -- the bridge spawns the `claude` command, which the chat app does not provide. Each turn spawns a fresh headless `claude -p`, streams the reply, and exits -- **no terminal stays open**, nothing is left running between turns. **`BRAIN_CWD`** sets the working directory the session runs in (defaults to this repo). Read the [Security](#security) note before you enable this.
 
 ---
 

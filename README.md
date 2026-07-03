@@ -70,6 +70,9 @@ One-way speech works too: from the repo root, `node bridge/say.mjs "Hello there.
 
 ### Opt into the real Claude brain (Level 3)
 
+> [!WARNING]
+> **Level 3 turns the talk box into a live, unconfirmed shell.** The spawned Claude runs with `bypassPermissions`, the full toolset, and any MCP servers you have configured -- anything typed into the page can run commands, read files, and modify files as you, with no confirmation prompt. That power is the point, but opt in knowingly: run it in a `BRAIN_CWD` you trust, or keep two-way talk without execution via `BRAIN_TOOLS=""`. Full details in [Security](#security).
+
 Stop the bridge, then start it with the `cli` backend and a working directory:
 
 ```bash
@@ -94,6 +97,13 @@ git clone https://github.com/met4citizen/HeadTTS
 ```
 
 Follow HeadTTS's own README to install it and download its model (~326 MB). The face calls the voice engine at **`http://127.0.0.1:8882/v1/synthesize`** (hardcoded in `phase1/main.js`), using the `bf_isabella` voice -- run HeadTTS so it answers on that host, port, and endpoint. Without it the face still renders and animates; it just has no audio to lip-sync to, and the Speak button reports the voice server as unreachable.
+
+**One extra step: download the face's voice.** HeadTTS ships with only two voice files (`af_bella`, `am_fenrir`); `bf_isabella` is not among them, and without it the first synth fails with `Error loading voice 'bf_isabella'`. Fetch it once (~510 KB) into HeadTTS's `voices/` folder:
+
+```bash
+cd HeadTTS
+curl -L -o voices/bf_isabella.bin https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/bf_isabella.bin
+```
 
 ---
 

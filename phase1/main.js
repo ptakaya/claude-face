@@ -1218,11 +1218,22 @@ async function speak(text, done) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ input: text, voice: VOICE, language: "en-us", speed: 1, audioEncoding: "wav" }),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      // Server reachable but synth refused — HeadTTS answers errors as JSON {"error":"…"}
+      // (422 when the requested voice file is absent from its voices/ dir).
+      const detail = (await res.json().catch(() => null))?.error || `HTTP ${res.status}`;
+      const e = new Error(detail);
+      e.serverUp = true;
+      throw e;
+    }
     data = await res.json();
   } catch (err) {
     if (myGen !== speakGen) return;  // a newer line already took over (barge-in owns continuation)
-    setStatus(`voice server unreachable — start it: cd spikes/s3-voice-bakeoff/headtts && npm start (${err.message})`);
+    setStatus(err.serverUp && /loading voice/i.test(err.message)
+      ? `HeadTTS is missing the "${VOICE}" voice file — download it into HeadTTS's voices/ folder (see README, Voice section) (${err.message})`
+      : err.serverUp
+        ? `voice synth failed (${err.message})`
+        : `voice server unreachable — start HeadTTS so it answers at ${TTS_URL} (see README, Voice section) (${err.message})`);
     fin();                            // genuine terminal — let any queued sentence proceed
     return;
   }

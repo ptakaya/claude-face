@@ -225,6 +225,19 @@ server.listen(PORT, "127.0.0.1", () => {
     : "mock (set BRAIN_BACKEND=cli for the real Claude)";
   console.log(`Claude Face bridge up on 127.0.0.1:${PORT} (loopback only)`);
   console.log(`  brain  ->  ${brainLabel}`);
+  if (brain.backend === "cli" && brain.tools === undefined) {
+    // The one warning that must be impossible to miss: full tools + bypassPermissions means
+    // the talk box executes as the user, unconfirmed. Printed every start, right under the brain line.
+    console.log(`
+  ═══════════════════════ FULL POWER — READ THIS ═══════════════════════
+  The talk box is now a live, unconfirmed shell. Claude runs with
+  bypassPermissions, the full toolset, and any MCP servers configured on
+  this machine — anything typed into the page can run commands and modify
+  files as you, with no confirmation prompt. That power is the point;
+  make sure it is what you want.
+  Talk-only face instead:  BRAIN_TOOLS="" npm start
+  ══════════════════════════════════════════════════════════════════════`);
+  }
   if (brain.backend === "cli") {
     // Fail loudly at startup, not on the first ask: the cli backend is useless without the
     // Claude Code CLI, and the most common trap is having only the Claude desktop app.

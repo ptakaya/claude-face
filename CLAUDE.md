@@ -77,7 +77,14 @@ The face lip-syncs to [HeadTTS](https://github.com/met4citizen/HeadTTS), cloned 
 git clone https://github.com/met4citizen/HeadTTS
 ```
 
-Install it per its own README and download its model (~326 MB). Run its server so it answers at `http://127.0.0.1:8882/v1/synthesize` (the endpoint hardcoded in `phase1/main.js`), voice `bf_isabella`. Without it the face still renders; it just has no audio.
+Install it per its own README and download its model (~326 MB). HeadTTS ships only the `af_bella` and `am_fenrir` voices; the face speaks `bf_isabella`, so download it once into HeadTTS's `voices/` folder (~510 KB) or the first synth fails with `Error loading voice 'bf_isabella'`:
+
+```bash
+cd HeadTTS
+curl -L -o voices/bf_isabella.bin https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/bf_isabella.bin
+```
+
+Run its server so it answers at `http://127.0.0.1:8882/v1/synthesize` (the endpoint hardcoded in `phase1/main.js`). Without it the face still renders; it just has no audio.
 
 ## Verify
 

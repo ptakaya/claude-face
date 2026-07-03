@@ -214,8 +214,8 @@ server.listen(PORT, "127.0.0.1", () => {
   console.log(`Claude Face bridge up on 127.0.0.1:${PORT} (loopback only)`);
   console.log(`  brain  ->  ${brainLabel}`);
   console.log(`  token  ->  ${TOKEN_SOURCE}`);
-  console.log(`\n  Open the face (click the link, or run the command):`);
+  console.log(`\n  Open the face in a browser:`);
   console.log(`     ${pageUrl}`);
-  console.log(`     open -a "Google Chrome" "${pageUrl}"\n`);
-  console.log(`  one-way say  ->  POST http://127.0.0.1:${PORT}/say   (or: claude-say "…")`);
+  if (process.platform === "darwin") console.log(`     open -a "Google Chrome" "${pageUrl}"`);
+  console.log(`\n  one-way say  ->  node bridge/say.mjs "…"   (from the repo root; reads the token for you)`);
 });

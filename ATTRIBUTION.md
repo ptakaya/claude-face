@@ -13,9 +13,9 @@ eyes / teeth / tongue from the MPFB (MakeHuman Plugin for Blender) asset
 library; both release their generated meshes under CC0. No attribution is
 required to use, modify, or redistribute it.
 
-## Runtime dependencies (installed separately, not bundled in this repo)
-- **three.js** — MIT License. Installed via `npm install` (see
-  `phase1/package.json`); not redistributed here.
+## Runtime dependencies (fetched separately, not bundled in this repo)
+- **three.js** — MIT License. Loaded at runtime from a pinned CDN via the
+  importmap in `phase1/index.html`; not redistributed here.
 - **HeadTTS** (optional, voice only) — MIT License, © Mika Suominen.
   Cloned separately from <https://github.com/met4citizen/HeadTTS> if you
   want speech; not bundled here.

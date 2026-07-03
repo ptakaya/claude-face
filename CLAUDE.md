@@ -21,7 +21,7 @@ cd phase1
 npm run serve        # zero-dependency Node static server on :8610 (loopback only)
 ```
 
-No `npm install` is needed for the face: `index.html` imports Three.js from a pinned CDN via an importmap, and `serve.mjs` has no dependencies. `npm run serve` runs the shipped `serve.mjs` (no Python needed). Alternatively, from the repo root, `npm start` launches both the face server and the bridge at once.
+Prerequisite: **Node 20 or newer** (check with `node --version`). No `npm install` is needed for the face: `index.html` imports Three.js from a pinned CDN via an importmap, and `serve.mjs` has no dependencies. `npm run serve` runs the shipped `serve.mjs` (no Python needed). Alternatively, from the repo root, `npm start` launches both the face server and the bridge at once.
 
 Open (or tell the user to open):
 
@@ -61,7 +61,7 @@ BRAIN_BACKEND=cli BRAIN_CWD="/absolute/path/to/a/workspace" npm start
 ```
 
 - `BRAIN_BACKEND=cli` -- spawn a real headless `claude -p` per turn (it exits when the turn ends; nothing stays running).
-- `BRAIN_CWD` -- **required**; the working directory the session runs in. Set it to a real, absolute path.
+- `BRAIN_CWD` -- the working directory the session runs in. Optional; defaults to the repo root. If set, use a real, absolute path.
 - Prerequisite: **Claude Code installed and authenticated** on this machine.
 - Optional dials: `BRAIN_MODEL` (default `sonnet`), `BRAIN_EFFORT`, `BRAIN_TOOLS` (unset = full tools; `""` = read-only face), `SF_BRIDGE_PORT`, `SF_PAGE_PORT`.
 

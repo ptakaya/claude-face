@@ -25,13 +25,13 @@ The particle head renders in the browser and lip-syncs. No bridge, no Claude acc
 Adds the bridge relay running with its **default `mock` backend**. You type into a talk box, and a deterministic canned reply streams back through her mouth. This proves the whole two-way plumbing -- WebSocket, streaming sentences, "thinking" dots, viseme playback -- with **zero Claude account and zero usage**. Node only.
 
 ### Level 3 -- the real Claude brain (`BRAIN_BACKEND=cli`)
-Swaps the mock for a real Claude Code session. Requires **Claude Code installed and authenticated** on the machine. Each turn spawns a fresh headless `claude -p`, streams the reply, and exits -- **no terminal stays open**, nothing is left running between turns. You must set **`BRAIN_CWD`** to the working directory the session should run in. Read the [Security](#security) note before you enable this.
+Swaps the mock for a real Claude Code session. Requires **Claude Code installed and authenticated** on the machine. Each turn spawns a fresh headless `claude -p`, streams the reply, and exits -- **no terminal stays open**, nothing is left running between turns. **`BRAIN_CWD`** sets the working directory the session runs in (defaults to this repo). Read the [Security](#security) note before you enable this.
 
 ---
 
 ## Quickstart
 
-Copy-paste. Level 2 (mock) is the recommended first run -- it needs no Claude. **Shortcut:** after the bridge `npm install` below, run `npm start` from the repo root to launch both servers at once. Or run them in two terminals:
+Copy-paste. **Prerequisite: Node 20 or newer** (`node --version`). Level 2 (mock) is the recommended first run -- it needs no Claude. **Shortcut:** after the bridge `npm install` below, run `npm start` from the repo root to launch both servers at once. Or run them in two terminals:
 
 ### Terminal A -- serve the face (:8610)
 
@@ -66,6 +66,8 @@ http://localhost:8610/?app=1&token=<generated>&bridgePort=8765
 
 Open that URL, click once to unlock audio, type a line in the talk box, and the **mock** brain streams a canned reply through her mouth. That is Level 2.
 
+One-way speech works too: from the repo root, `node bridge/say.mjs "Hello there."` makes every connected face speak the line (it reads the bridge token from `bridge/.sf-token` for you).
+
 ### Opt into the real Claude brain (Level 3)
 
 Stop the bridge, then start it with the `cli` backend and a working directory:
@@ -76,7 +78,7 @@ BRAIN_BACKEND=cli BRAIN_CWD="/absolute/path/to/a/workspace" npm start
 ```
 
 - `BRAIN_BACKEND=cli` -- use a real Claude Code session instead of the mock.
-- `BRAIN_CWD` -- **required**; the directory the spawned `claude -p` runs in (its context, its `CLAUDE.md`, its files).
+- `BRAIN_CWD` -- the directory the spawned `claude -p` runs in (its context, its `CLAUDE.md`, its files). Optional; defaults to this repo's root. Point it somewhere else to give her a different workspace.
 - Requires Claude Code installed and authenticated. A fresh `claude -p` is spawned per turn and exits when the turn ends -- no long-lived process.
 
 Optional dials (all have sane defaults): `BRAIN_MODEL` (default `sonnet`), `BRAIN_EFFORT`, `BRAIN_TOOLS` (unset = full tools; `""` = read-only face), `SF_BRIDGE_PORT` (default `8765`), `SF_PAGE_PORT` (default `8610`).
